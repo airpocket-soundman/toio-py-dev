@@ -28,7 +28,7 @@ async def cube_functions():
 
         read_data = await cube.api.sensor.read()
         if read_data is not None:
-            print("sendor   : ", read_data)
+            print("sensor   : ", read_data)
 
     print("end")
     await cube.disconnect()
