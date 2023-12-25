@@ -3,41 +3,51 @@ import sys
 from toio.simple import SimpleCube
 import signal
 
+target_direction = 0
 turn_speed = 10
 move_speed = 10
-count_timer = 2.0
-motor_param_dict = {"first_move"   : [10, 10, 1.5],
-                    "straight"     : [10, 10, 4],
-                    "turn_right"   : [10,  2, 4],
-                    "turn_left"    : [ 2, 10, 4]}
+count_timer = 0.2
+motor_param_dict = {"first_move"   : [ -8,  -8, 1.0],
+                    "straight"     : [ -8,  -8, 1.8],
+                    "turn_right"   : [  0,  -8, 1.8, -8, 0.4],
+                    "turn_left"    : [ -8,   0, 1.8, -8, 0.4]}
+distance = 0
+panel_size = 29
+
 
 LOOP = True
-panels = [[   7,  33,  64,  38],[  35,  63,  64,  38],[  64,  89,  65,  37],[  92, 120,  64,  37],
-          [   6,  33,  36,   8],[  34,  63,  36,   9],[  64,  90,  36,   9],[  92, 119,  36,   9],
-          [   6,  32,   8,  19],[  34,  62,   8, -20],[ -79, -53,   7, -19],[-108, -80,   7, -19],
-          [   6,  33, -21, -48],[  35,  61, -21, -49],[ -78, -53, -22, -48],[   0,   0,   0,   0]]
+panels = [[   6,  33,  64,  38],[  34,  63,  64,  38],[  64,  89,  65,  38],[  92, 120,  64,  38],
+          [   6,  33,  36,   9],[  34,  63,  36,   9],[  64,  90,  36,   9],[  92, 119,  36,   9],
+          [   6,  33,   8, -20],[  34,  62,   8, -20],[ -79, -53,   8, -20],[-108, -80,   8, -20],
+          [   6,  33, -22, -49],[  34,  61, -22, -49],[ -78, -53, -22, -49],[   0,   0,   0,   0]]
 
 panel_type = ["cross",  "cross",  "cross",   "cross",
               "wcurve", "wcurve", "wcurve",  "wcurve",
               "wcurve", "wcurve", "scurve",  "scurve",
               "scurve", "scurve", "straight","straight"]
 
+panel_center = [[  11,  43],[  41,  43],[  70,  43],[  99,  43],
+                [  11,  14],[  41,  14],[  70,  14],[  99,  14],
+                [  11, -14],[  40, -14],[ -73, -14],[-102, -14],
+                [  11, -43],[  40, -43],[ -73, -43],[   0,   0]]
+
 
 
 #def read_position():
 
 
-def check_panel_No(x,y):
+def check_panel_No(pos):
     #print(x,y)
     for index, panel in enumerate(panels):
-        if x > panel[0] and x < panel[1]:
-            if y < panel[2] and y > panel[3]:
+        if pos[0] >= panel[0] and pos[0] <= panel[1]:
+            if pos[1] <= panel[2] and pos[1] >= panel[3]:
                 return index
-
-def gate_check():
-    print("gate check")
-
-
+            
+def check_gate(cube):
+    pos = cube.get_current_position()
+    panel = check_panel_No(pos)
+    print("panel no = ", panel, " / target_direction = ", target_direction)
+    
 def ctrl_c_handler(_signum, _frame):
     global LOOP
     print("Ctrl_C")
@@ -79,48 +89,86 @@ def count_down(cube):
 
 
 def set_orientation(cube):
-    target_angle = [0, 90, 180, 270]
-    orientation = cube.get_orientation() + 180
-    print("before = ", orientation - 180)
-    if orientation > 315 :
-        orientation = orientation - 360
-    
+    global distance
+    global target_direction
+    target_angle = [0, 90, 180, -90]
+
+    direction = cube.get_orientation()
+    print("before = ", direction)
+    if direction < -135 :
+        direction = 360 + direction 
     for angle in target_angle:
-        if orientation > angle - 45 and orientation <= angle + 45:
-            print("turn angle = ", angle - orientation)
-            cube.turn(speed = turn_speed, degree = angle - orientation)
-    orientation = cube.get_orientation()
-    print("after = ", orientation)
+        if direction > angle - 45 and direction <= angle + 45:
+            print("turn angle = ", angle - direction)
+            degree = angle - direction
+            target_direction = angle
+
+    pos = cube.get_current_position()
+    panel_No = check_panel_No(pos)
+    print("panel no = ", panel_No, " / pos = ", pos, " / panel_center = ",panel_center[panel_No])
+    if target_direction == 180:
+        distance = (panel_center[panel_No][1] - 12) - pos[1] + panel_size
+        bias = pos[0] - panel_center[panel_No][0]
+    elif target_direction == -90:
+        distance = pos[0] - (panel_center[panel_No][0] - 12) + panel_size
+        bias = panel_center[panel_No][1] - pos[1]
+    elif target_direction == 0:
+        distance = pos[1] - (panel_center[panel_No][1] + 12) + panel_size
+        bias = panel_center[panel_No][0] - pos[0]
+    elif target_direction == 90:
+        distance = (panel_center[panel_No][0] + 12) - pos[0] + panel_size
+        bias = pos[1] - panel_center[panel_No][1]
+    
+    print("distance = ", distance, " / bias = ", bias)
+
+    degree -= bias
+
+    cube.turn(speed = turn_speed, degree = degree)
+    direction = cube.get_orientation()
+    print("after = ", direction)
+
 
 def move_cube(cube, mode):
+    #print("mode = ", mode)
     param = motor_param_dict[mode]
-    cube.run_motor(left_speed = param[0] ,right_speed = param[1], duration = param[2])
+    #print("param = ", param)
+
+    if mode == "straight":
+        cube.run_motor(left_speed = param[0] ,right_speed = param[1], duration = (param[2] * distance/panel_size))
+    elif mode == "turn_right" or mode == "turn_left":
+        cube.run_motor(left_speed = param[3], right_speed = param[3], duration = param[4])
+        cube.run_motor(left_speed = param[0] ,right_speed = param[1], duration = param[2])
+        cube.run_motor(left_speed = param[3], right_speed = param[3], duration = param[4])
+    
 
 signal.signal(signal.SIGINT, ctrl_c_handler)
+
+
+    
+
 
 def main():
     
     with SimpleCube() as cube:
 
         wait_mat(cube)
-        #set_orientation(cube)
+        set_orientation(cube)
         count_down(cube)
-        set_orientation(cube)
-        move_cube(cube,"first_move")
-        set_orientation(cube)
 
+        #move_cube(cube,"first_move")
+       
+        
         while LOOP:
-            pos = cube.get_current_position()
-            orientation = cube.get_orientation()
-            print("POSITION:", pos, orientation)
-            #print("orientation:" )
-            cube.sleep(0.5)
-            if pos != None:
-                panel_no = check_panel_No(pos[0], pos[1])
-            else:
-                panel_no = None
-            print(panel_no)
+            check_gate(cube)
+            move_cube(cube,"straight")
+            set_orientation(cube)
+        
+            #check_gate(cube)
+            #move_cube(cube,"turn_right")
+            #set_orientation(cube)
 
+
+        print("finished")
 
 if __name__ == "__main__":
     sys.exit(main())
