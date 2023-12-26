@@ -2,10 +2,10 @@ import signal
 import sys
 import math
 
-from toio.simple import SimpleCube
+from toio.simple import SimpleCube 
 
 LOOP = True
-toio_sensor_distance = 14  # this is mat sacale, not mm.
+toio_sensor_distance = 13  # this is mat sacale, not mm.
 
 def ctrl_c_handler(_signum, _frame):
     global LOOP
