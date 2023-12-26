@@ -18,10 +18,10 @@ motor_param_dict = {"first_move"   : [ 10, 10, 1.5],
 
 LOOP = True
 
-panels        = [[   0,   0,   0,   0],[   0,   0,   0,   0],[   0,   0,   0,   0],[   0,   0,   0,   0],
-                 [   0,   0,   0,   0],[   0,   0,   0,   0],[   0,   0,   0,   0],[   0,   0,   0,   0],
-                 [   0,   0,   0,   0],[   0,   0,   0,   0],[   0,   0,   0,   0],[   0,   0,   0,   0],
-                 [ 276, 250, 306, 279],[ 192, 164, 306, 279],[   0,   0,   0,   0],[   0,   0,   0,   0]]
+panels        = [[ 276, 304, 143, 171],[ 309, 336, 143, 171],[ 340, 368, 143, 171],[ 374, 401, 143, 171],
+                 [ 276, 304, 185, 213],[ 309, 336, 185, 213],[ 340, 368, 185, 213],[ 374, 401, 185, 213],
+                 [ 276, 304, 229, 257],[ 309, 336, 229, 257],[ 340, 368, 229, 257],[ 374, 401, 229, 257],
+                 [ 276, 304, 272, 300],[ 309, 336, 272, 300],[ 340, 368, 272, 300],[ 374, 401, 272, 300]]
 
 panel_center = [[  11,  43],[  41,  43],[  70,  43],[  99,  43],
                 [  11,  14],[  41,  14],[  70,  14],[  99,  14],
@@ -42,8 +42,8 @@ signal.signal(signal.SIGINT, ctrl_c_handler)
 
 def check_panel_No(pos):
     for index, panel in enumerate(panels):
-        if panel[0] >= pos[0] and pos[0] >= panel[1]:
-            if panel[2] >= pos[1] and pos[1] >= panel[3]:
+        if panel[0] <= pos[0] and pos[0] <= panel[1]:
+            if panel[2] <= pos[1] and pos[1] <= panel[3]:
                 return index
 
 async def cube_connect():
@@ -83,11 +83,28 @@ async def set_direction(cube, pos):
     
     for angle in target_angle:
         if direction > angle - 45 and direction <= angle + 45:
+            turn_angle = angle - direction
+            
             print("turn angle = ", angle - direction)
-            #cube.turn(speed = turn_speed, degree = angle - direction)
+            """
+            if turn_angle > 0:
+                x_speed =  20
+                y_speed = -20
+            else:
+                x_speed = -20
+                y_speed =  20
+
+            await cube.api.motor.motor_control(x_speed, y_speed)
+            await asyncio.sleep(turn_angle/20)
+            await cube.api.motor.motor_control(0, 0)
+            """
+
             target_direction = angle
     pos = await get_position(cube)
     return pos
+
+
+
 
 async def move_cube(cube, mode):
     param = motor_param_dict[mode]
