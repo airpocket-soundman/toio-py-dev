@@ -10,9 +10,9 @@ turn_speed = 10
 move_speed = 10
 count_timer = 2.0
 motor_param_dict = {"first_move"   : [ 10, 10, 1.5],
-                    "straight"     : [ -8, -8, 1.6],
-                    "turn_right"   : [  0, -8, 1.7, -8, -8, 0.5],
-                    "turn_left"    : [ -8,  0, 1.7, -8, -8, 0.5]}
+                    "straight"     : [ -8, -8, 1.8],
+                    "turn_right"   : [  0, -8, 1.8, -8, -8, 0.4],
+                    "turn_left"    : [ -8,  0, 1.8, -8, -8, 0.4]}
 
 LOOP = True
 panels = [[  33,   6,  64,  37],[  62,  34,  64,  37],[  90,  64,  64,  37],[ 120,  92,  64,  37],

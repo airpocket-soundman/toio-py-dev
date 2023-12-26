@@ -1,6 +1,5 @@
 import asyncio
 import signal
-import ast
 from toio.scanner import BLEScanner
 from toio.cube import ToioCoreCube, IdInformation
 
@@ -27,9 +26,7 @@ async def cube_functions():
                 print("lost position")
             else:
                 print(read_data)
-                dict = str(read_data)
-                dict = ast.literal_eval(dict)
-                print(dict)
+
 
 
                 
