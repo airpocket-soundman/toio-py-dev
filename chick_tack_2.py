@@ -21,21 +21,21 @@ motor_param_dict = {"first_move"   : [ 10, 10, 1.5],
                     "turn_left"    : [ -8,  0, 1.8, -8, -8, 0.4]}
 
 LOOP = True
-panels_sub    = [[ , , , ],[ , , , ],[ , , , ],[ , , , ],
-                 [ , , , ],[ , , , ],[ , , , ],[ , , , ],
-                 [ , , , ],[ , , , ],[ , , , ],[ , , , ],
-                 [ , , , ],[ , , , ],[ , , , ],[ , , , ]]
+panel_area_sensor       = [[ 22,  54,  78, 110],[ 55,  86,  78, 110],[ 87, 119,  78, 110],[ 120, 152,  78, 110],
+                           [ 22,  54,  34,  66],[ 55,  86,  34,  66],[ 87, 119,  34,  66],[ 120, 152,  34,  66],
+                           [ 22,  54,  -8,  24],[ 55,  86,  -8,  24],[ 87, 119,  -8,  24],[ 120, 152,  -8,  24],
+                           [ 22,  54, -52, -20],[ 55,  86, -52, -20],[ 87, 119, -52, -20],[ 120, 152, -52, -20]]
 
 #x - 9,y -9
-panels        = [[  27,  -3,  55,  26],[  54,  28,  55,  26],[  72,  55,  55,  28],[ 111,  83,  55,  28],
-                 [  27,  -3,  27,   0],[  54,  28,  27,   0],[  72,  55,  27,   0],[ 111,  83,  27,   0],
-                 [  27,  -3,  -1, -28],[  54,  28,  -1, -29],[ -71, -86,  -1, -29],[ -89,-117,   0, -29],
-                 [  27,  -3, -29, -57],[  54,  28, -29, -57],[ -71, -86, -12, -57],[   0,   0,   0,   0]]
+panel_area_sensor_raw    = [[ 24, 54,  79, 108],[ 57, 84, 79, 108],[ 88, 118, 79, 109],[ 122, 152, 78, 108],
+                            [ 23, 54,  35,  65],[  0,  0,  0,   0],[  0,   0,  0,   0],[   0,   0,  0,   0],
+                            [ 22, 55,  -8,  23],[  0,  0,  0,   0],[  0,   0,  0,   0],[   0,   0,  0,   0],
+                            [ 23, 54, -21, -51],[  0,  0,  0,   0],[  0,   0,  0,   0],[   0,   0,  0,   0]]
 
-panel_center = [[  11,  43],[  41,  43],[  70,  43],[  99,  43],
-                [  11,  14],[  41,  14],[  70,  14],[  99,  14],
-                [  11, -14],[  40, -14],[ -73, -14],[-102, -14],
-                [  11, -43],[  40, -43],[ -73, -43],[   0,   0]]
+panel_center            = [[  39,  94],[  72,  94],[ 104,  94],[ 137,  94],
+                           [  39,  51],[  72,  51],[ 104,  51],[ 137,  51],
+                           [  39,   8],[  72,   8],[ 104,   8],[ 137,   8],
+                           [  39, -37],[  72, -37],[ 104, -37],[ 137, -37]]
 
 panel_type = ["cross",  "cross",  "cross",   "cross",
               "wcurve", "wcurve", "wcurve",  "wcurve",
@@ -50,10 +50,10 @@ def convert_to_sensor_position(pos):
                int(cos(radians(direction + 43)) * toio_sensor_distance + pos[1]))
     return pos
 
-def check_panel_No(pos):
-    for index, panel in enumerate(panels):
-        if panel[0] >= pos[0] and pos[0] >= panel[1]:
-            if panel[2] >= pos[1] and pos[1] >= panel[3]:
+def check_panel_No(sensor_pos):
+    for index, panel in enumerate(panel_area_sensor):
+        if panel[0] <= sensor_pos[0] and sensor_pos[0] <= panel[1]:
+            if panel[2] <= sensor_pos[1] and sensor_pos[1] <= panel[3]:
                 return index
 
 def ctrl_c_handler(_signum, _frame):
@@ -83,19 +83,22 @@ def count_down(cube):
 def set_direction(cube):
     global direction, target_direction
     target_angle = [0, 90, 180, 270]
-    direction = cube.get_orientation() + 180
-    print("before = ", direction)
-    if direction > 315 :
-        direction = direction - 360
-    
-    for angle in target_angle:
-        if direction > angle - 45 and direction <= angle + 45:
-            print("turn angle = ", angle - direction)
-            cube.turn(speed = turn_speed, degree = angle - direction)
-            target_direction = angle
-    direction = cube.get_orientation() + 180
-    print("after = ", direction)
-    return True
+    try:
+        direction = cube.get_orientation() + 180
+        print("before = ", direction)
+        if direction > 315 :
+            direction = direction - 360
+        
+        for angle in target_angle:
+            if direction > angle - 45 and direction <= angle + 45:
+                print("turn angle = ", angle - direction)
+                cube.turn(speed = turn_speed, degree = angle - direction)
+                target_direction = angle
+        direction = cube.get_orientation() + 180
+        print("after = ", direction)
+        return True
+    except:
+        return False
 
 def get_target_distance(cube):
     try:
@@ -141,12 +144,11 @@ def main():
 
         wait_mat(cube)
         count_down(cube)
-        
 
-        set_direction(cube)
-
+        #set_direction(cube)
     
         while LOOP:
+            set_direction(cube)
             if get_target_distance(cube):
                 print("go go go")
             
