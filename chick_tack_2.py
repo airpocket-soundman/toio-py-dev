@@ -15,8 +15,7 @@ target_direction = 0
 distance = 0
 bias = 0
 
-motor_param_dict = {"first_move"   : [ 10, 10, 1.5],
-                    "straight"     : [ -8, -8, 1.8],
+motor_param_dict = {"straight"     : [ -8, -8, 1.8],
                     "turn_right"   : [  0, -8, 1.8, -8, -8, 0.4],
                     "turn_left"    : [ -8,  0, 1.8, -8, -8, 0.4]}
 
@@ -37,10 +36,10 @@ panel_center            = [[  39,  94],[  72,  94],[ 104,  94],[ 137,  94],
                            [  39,   8],[  72,   8],[ 104,   8],[ 137,   8],
                            [  39, -37],[  72, -37],[ 104, -37],[ 137, -37]]
 
-panel_type = ["cross",  "cross",  "cross",   "cross",
-              "wcurve", "wcurve", "wcurve",  "wcurve",
-              "wcurve", "wcurve", "scurve",  "scurve",
-              "scurve", "scurve", "straight","straight"]
+panel_type_list         = ["cross",  "cross",  "cross",   "cross",
+                           "wcurve", "wcurve", "wcurve",  "wcurve",
+                           "wcurve", "wcurve", "scurve",  "scurve",
+                           "scurve", "scurve", "straight","straight"]
 
 def convert_to_sensor_position(pos):
     if pos == None:
@@ -50,7 +49,7 @@ def convert_to_sensor_position(pos):
                int(cos(radians(direction + 43)) * toio_sensor_distance + pos[1]))
     return pos
 
-def check_panel_No(sensor_pos):
+def get_panel_No(sensor_pos):
     for index, panel in enumerate(panel_area_sensor):
         if panel[0] <= sensor_pos[0] and sensor_pos[0] <= panel[1]:
             if panel[2] <= sensor_pos[1] and sensor_pos[1] <= panel[3]:
@@ -80,59 +79,62 @@ def count_down(cube):
     cube.turn_on_cube_lamp(r=255, g=0, b=0, duration=count_timer)
     cube.sleep(0.5)
 
-def set_direction(cube):
-    global direction, target_direction
-    target_angle = [0, 90, 180, 270]
-    try:
-        direction = cube.get_orientation() + 180
-        print("before = ", direction)
-        if direction > 315 :
-            direction = direction - 360
-        
-        for angle in target_angle:
+def get_target_direction(direction):
+    target_direction_list = [0, 90, 180, 270]
+    if direction > 315:
+        direction = direction -360
+        for angle in target_direction_list:
             if direction > angle - 45 and direction <= angle + 45:
                 print("turn angle = ", angle - direction)
-                cube.turn(speed = turn_speed, degree = angle - direction)
-                target_direction = angle
-        direction = cube.get_orientation() + 180
-        print("after = ", direction)
-        return True
-    except:
-        return False
+                target_direction = angle   
+    return target_direction     
 
-def get_target_distance(cube):
-    try:
-        direction = cube.get_orientation() + 180
-    except:
-        pass
+def get_offset(pos_center, panel_No):
+    if target_direction == 0:
+        forward_offset = (panel_center[panel_No][1] - 6) - pos_center[1]
+        LR_offset = pos_center[0] - panel_center[panel_No][0]
+    elif target_direction == 90:
+        forward_offset = pos_center[0] - (panel_center[panel_No][0] - 6)
+        LR_offset = panel_center[panel_No][1] - pos_center[1]
+    elif target_direction == 180:
+        forward_offset = pos_center[1] - (panel_center[panel_No][1] + 6)
+        LR_offset = panel_center[panel_No][0] - pos_center[0]
+    elif target_direction == 270:
+        forward_offset = (panel_center[panel_No][0] + 6) - pos_center[0]
+        LR_offset = pos_center[1] - panel_center[panel_No][1]
+    return forward_offset, LR_offset
 
-    pos = cube.get_current_position()
-    print("pos = ",pos)
-    if pos == None:
-        print("mat not found")
-        return False
-    else:
-        sensor_pos = convert_to_sensor_position(pos)
-        panel_No = check_panel_No(sensor_pos)
-        print("sensor_Pos = " ,sensor_pos, " / panel_No = ", panel_No)
+def set_direction(cube, target_direction, LR_offset):
+    cube.turn(speed = turn_speed, degree = target_direction - LR_offset)
 
+def get_move_type(panel_No, target_direction):
+    panel_type = panel_type_list[panel_No] 
+    if panel_type == "cross":
+        move_type = "straight"
+    elif panel_type == "wcurve":
+        if target_direction == 0 or target_direction == 180:
+            move_type = "L_curve"
+        else:
+            move_type = "R_curve"
+    elif panel_type == "scurve":
         if target_direction == 0:
-            distance = (panel_center[panel_No][1] - 6) - pos[1] + panel_size
-            bias = pos[0] - panel_center[panel_No][0]
+            move_type = "L_curve"
         elif target_direction == 90:
-            distance = pos[0] - (panel_center[panel_No][0] - 6) + panel_size
-            bias = panel_center[panel_No][1] - pos[1]
-        elif target_direction == 180:
-            distance = pos[1] - (panel_center[panel_No][1] + 6) + panel_size
-            bias = panel_center[panel_No][0] - pos[0]
-        elif target_direction == 270:
-            distance = (panel_center[panel_No][0] + 6) - pos[0] + panel_size
-            bias = pos[1] - panel_center[panel_No][1]
-        
-        print("panel = ", panel_No, " / sensor pos = ", sensor_pos, " / direction = ", direction, " / target_direction = ", target_direction, " / distance = ", distance, " / bias = ", bias)
-        return True
+            move_type = "R_curve"
+        else:
+            move_type = "clush" 
 
-def move_cube(cube, mode):
+    elif panel_type == "straight":
+        if target_direction == 0:
+            move_type = "straight"
+        elif target_direction == 180:
+            move_type = "straight"
+        else:
+            move_type = "clush" 
+
+    return move_type
+       
+def move_cube(cube , mode, target_direction ,forward_offset, ):
     param = motor_param_dict[mode]
     cube.run_motor(left_speed = param[0] ,right_speed = param[1], duration = param[2])
 
@@ -148,23 +150,51 @@ def main():
         #set_direction(cube)
     
         while LOOP:
-            set_direction(cube)
-            if get_target_distance(cube):
-                print("go go go")
+
+            # センターポジションを取得
+            pos_center = cube.get_current_position(cube)
+            if pos_center == None:
+                print("can not read center position")
+                return
+            else:
+                # センサーポジションを取得
+                pos_sensor = convert_to_sensor_position(pos_sensor)
+            
+            # 現在の方位を取得
+            direction = cube.get_orientation(cube)            
+            if direction == None:
+                print("can not read direction")
+                return
+            else:
+                # 現在の方位を180°シフト
+                direction = direction +180
+
+            # 現在のパネル番号を取得
+            panel_No = get_panel_No(pos_sensor)
+
+            # 目的方位を取得
+            target_direction = get_target_direction(direction)
+
+            # 理想位置からのオフセット量を取得
+            forward_offset, LR_offset = get_offset(pos_center, panel_No)
+            print(      "panel = ",             panel_No, 
+                    " / sensor pos = ",         pos_sensor, 
+                    " / direction = ",          direction, 
+                    " / target_direction = ",   target_direction, 
+                    " / forward_offset = ",     forward_offset, 
+                    " / LR_offset = ",          LR_offset)
+
+            # 左右位置のオフセット量を勘案して、cube方位を修正
+            set_direction(cube, target_direction, LR_offset)
+
+            # 現在パネルと侵入方向から、移動タイプを決定
+            move_type = get_move_type(panel_No, target_direction)
+
+            # 
+            #move_cube(cube, move_type, forward_offset)
             
             cube.sleep(0.5)
 
-        #move_cube(cube, "straight")
-
-        """ #main loop
-        while LOOP:
-            pos = cube.get_current_position()
-            direction = cube.get_orientation() + 180
-            sensor_pos = convert_to_sensor_position(pos, direction)
-            
-            print("POSITION:", pos, direction)
-            #print("direction:" )
-        """
 
 if __name__ == "__main__":
     sys.exit(main())
