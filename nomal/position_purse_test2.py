@@ -73,6 +73,22 @@ async def get_position(cube):
 
     return read_data
 
+async def get_center_position(cube):
+    #global read_data
+    read_data = await cube.api.id_information.read()
+    if read_data is not None:
+        if str(read_data) == "Position ID missed":
+            read_data = None
+        else:
+            read_data = str(read_data.center).split(",")
+            read_data[0] = int(read_data[0][27:])
+            read_data[1] = read_data[1][3:]
+            read_data[1] = int(read_data[1][:-1])
+            read_data[2] = read_data[2][7:]
+            read_data[2] = int(read_data[2][:-1])
+
+    return read_data
+
 async def set_direction(cube, pos):
     global target_direction
     target_angle = [0, 90, 180, 270]
@@ -83,23 +99,21 @@ async def set_direction(cube, pos):
     
     for angle in target_angle:
         if direction > angle - 45 and direction <= angle + 45:
-            turn_angle = angle - direction
-            
-            print("turn angle = ", angle - direction)
-            """
-            if turn_angle > 0:
-                x_speed =  20
-                y_speed = -20
-            else:
-                x_speed = -20
-                y_speed =  20
-
-            await cube.api.motor.motor_control(x_speed, y_speed)
-            await asyncio.sleep(turn_angle/20)
-            await cube.api.motor.motor_control(0, 0)
-            """
-
             target_direction = angle
+            print("target angle = ", angle)
+    center_pos = await get_center_position(cube)
+    await cube.api.motor.motor_control_target(
+        timeout=5,
+        movement_type=MovementType.Linear,
+        speed=Speed(
+            max=10, speed_change_type=SpeedChangeType.Constant
+        ),
+        target=TargetPosition(
+            cube_location=CubeLocation(point=Point(x=center_pos[0], y=center_pos[1]), angle=0),
+            rotation_option=RotationOption.AbsoluteOptimal,
+        ),
+    )
+
     pos = await get_position(cube)
     return pos
 
