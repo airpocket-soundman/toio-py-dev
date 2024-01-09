@@ -25,8 +25,6 @@ def convert_to_sensor_position(pos, orientation):
                int(math.cos(math.radians(orientation + 43)) * toio_sensor_distance + pos[1]))
     return pos, orientation
 
-
-
 def test():
     with SimpleCube() as cube:
         while LOOP:
